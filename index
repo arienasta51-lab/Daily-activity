@@ -1,0 +1,418 @@
+[DAC.html](https://github.com/user-attachments/files/27268216/DAC.html)
+# Daily-activity<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Activity</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <!-- jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0f1a; --bg-secondary: #111827; --fg: #f1f5f9; --muted: #64748b; --accent: #10b981; --accent-hover: #059669; --card: #1e293b; --border: #334155; --danger: #ef4444; --info-bg: rgba(59, 130, 246, 0.1); --info-border: rgba(59, 130, 246, 0.3); --info-text: #60a5fa;
+        }
+        [data-theme="light"] { --bg: #f8fafc; --bg-secondary: #ffffff; --fg: #0f172a; --muted: #64748b; --accent: #059669; --card: #ffffff; --border: #e2e8f0; --danger: #dc2626; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Space Grotesk', sans-serif; background: var(--bg); color: var(--fg); min-height: 100vh; transition: background 0.3s; }
+        .bg-pattern { position: fixed; inset: 0; background-image: radial-gradient(ellipse at 20% 20%, rgba(16, 185, 129, 0.08) 0%, transparent 50%), radial-gradient(ellipse at 80% 80%, rgba(59, 130, 246, 0.06) 0%, transparent 50%); pointer-events: none; z-index: 0; }
+        .grid-overlay { position: fixed; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
+        [data-theme="light"] .grid-overlay { background-image: linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px); }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .card { background: var(--card); border: 1px solid var(--border); transition: all 0.3s ease; }
+        .input-field { background: var(--bg-secondary); border: 1px solid var(--border); color: var(--fg); transition: all 0.2s ease; }
+        .input-field:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15); }
+        select.input-field { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; background-size: 16px; padding-right: 40px; cursor: pointer; }
+        .btn-primary { background: var(--accent); color: white; transition: all 0.2s ease; }
+        .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+        .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--fg); transition: all 0.2s ease; }
+        .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+        .btn-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); transition: all 0.2s ease; }
+        .btn-danger:hover { background: var(--danger); color: white; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid var(--border); text-align: left; }
+        th { background: var(--bg-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem; }
+        .table-input { background: transparent; border: none; color: var(--fg); width: 100%; padding: 0.75rem 1rem; }
+        .table-input:focus { outline: none; background: rgba(16, 185, 129, 0.05); }
+        .fade-in { animation: fadeIn 0.5s ease forwards; }
+        .slide-up { animation: slideUp 0.6s ease forwards; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .stagger-1 { animation-delay: 0.1s; }.stagger-2 { animation-delay: 0.2s; }.stagger-3 { animation-delay: 0.3s; }.stagger-4 { animation-delay: 0.4s; }
+        @media print { .no-print { display: none !important; } body { background: white; color: black; } .card { background: white; border: 1px solid #ccc; } }
+        .row-enter { animation: rowEnter 0.3s ease forwards; }
+        @keyframes rowEnter { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+        .row-delete { animation: rowDelete 0.3s ease forwards; }
+        @keyframes rowDelete { to { opacity: 0; transform: translateX(20px); } }
+        .theme-toggle { position: relative; width: 56px; height: 28px; background: var(--card); border: 1px solid var(--border); border-radius: 9999px; cursor: pointer; transition: all 0.3s ease; }
+        .theme-toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; background: var(--accent); border-radius: 50%; transition: transform 0.3s ease; }
+        [data-theme="light"] .theme-toggle::after { transform: translateX(28px); }
+        .company-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; font-size: 0.75rem; color: var(--accent); margin-top: 8px; }
+        .nav-tab { padding: 0.75rem 1.5rem; font-weight: 500; font-size: 0.875rem; color: var(--muted); border-bottom: 2px solid transparent; transition: all 0.2s ease; cursor: pointer; }
+        .nav-tab:hover { color: var(--fg); }
+        .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+        .history-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; transition: all 0.2s ease; }
+        .history-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+        .info-box { background: var(--info-bg); border: 1px solid var(--info-border); border-radius: 10px; padding: 1rem 1.25rem; }
+        .info-box-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: rgba(59, 130, 246, 0.15); }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 100; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal-content { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; width: 90%; max-width: 400px; transform: scale(0.9) translateY(20px); transition: transform 0.3s ease; }
+        .modal-overlay.active .modal-content { transform: scale(1) translateY(0); }
+        .modal-lock-icon { width: 48px; height: 48px; border-radius: 50%; background: rgba(16, 185, 129, 0.1); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; }
+        .error-shake { animation: shake 0.5s ease; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+        .loading-spinner { border: 2px solid var(--border); border-top: 2px solid var(--accent); border-radius: 50%; width: 16px; height: 16px; animation: spin 1s linear infinite; display: inline-block; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="bg-pattern"></div>
+    <div class="grid-overlay"></div>
+
+    <!-- Password Modal -->
+    <div id="passwordModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-lock-icon"><svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" style="color: var(--accent)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg></div>
+            <h3 class="text-xl font-bold text-center mb-2">Akses Dashboard</h3>
+            <p class="text-sm text-center mb-6" style="color: var(--muted)">Masukkan password untuk melanjutkan</p>
+            <input type="password" id="passwordInput" class="input-field w-full px-4 py-3 rounded-lg text-sm mb-2" placeholder="Enter password...">
+            <p id="passwordError" class="text-xs mb-4 hidden" style="color: var(--danger)">Password salah, silakan coba lagi.</p>
+            <div class="flex gap-3">
+                <button id="cancelPasswordBtn" class="btn-secondary flex-1 px-4 py-2.5 rounded-lg text-sm font-medium">Batal</button>
+                <button id="submitPasswordBtn" class="btn-primary flex-1 px-4 py-2.5 rounded-lg text-sm font-medium">Masuk</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="relative z-10 min-h-screen py-8 px-4 md:px-8">
+        <!-- Header -->
+        <header class="max-w-5xl mx-auto mb-6 fade-in">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg></div>
+                    <h1 class="text-2xl md:text-3xl font-bold tracking-tight">Daily Activity</h1>
+                </div>
+                <div class="flex items-center gap-3 no-print">
+                    <div id="connectionStatus" class="flex items-center gap-2 text-xs" style="color: var(--muted)"><span class="loading-spinner"></span><span>Connecting...</span></div>
+                    <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme"></button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="max-w-5xl mx-auto mb-6 no-print">
+            <div class="flex border-b" style="border-color: var(--border)">
+                <button class="nav-tab active" data-view="input" id="tabInput"><span class="flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>Input Activity</span></button>
+                <button class="nav-tab" data-view="dashboard" id="tabDashboard"><span class="flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>Dashboard</span></button>
+            </div>
+        </nav>
+
+        <!-- Input View -->
+        <main class="max-w-5xl mx-auto view-section active" id="inputView">
+            <div class="card rounded-2xl overflow-hidden slide-up stagger-1">
+                <div class="p-6 md:p-8 border-b" style="border-color: var(--border)">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+                        <div class="slide-up stagger-2">
+                            <label class="block text-xs font-medium mb-2 uppercase tracking-wider" style="color: var(--muted)">Area</label>
+                            <select id="areaInput" class="input-field w-full px-4 py-3 rounded-lg text-sm cursor-pointer">
+                                <option value="">Pilih Area</option>
+                                <option value="Adaro Persada Mandiri">Adaro Persada Mandiri</option>
+                                <option value="Tanjung Power Indonesia">Tanjung Power Indonesia</option>
+                                <option value="Kalimantan Aluminium Industry">Kalimantan Aluminium Industry</option>
+                                <option value="Kalimantan Energy Hijau">Kalimantan Energy Hijau</option>
+                                <option value="Kayan Hydropower Nusantara">Kayan Hydropower Nusantara</option>
+                            </select>
+                            <div id="areaBadge" class="company-badge hidden"><svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg><span id="areaBadgeText"></span></div>
+                        </div>
+                        <div class="slide-up stagger-3">
+                            <label class="block text-xs font-medium mb-2 uppercase tracking-wider" style="color: var(--muted)">Lokasi Kerja</label>
+                            <select id="lokasiInput" class="input-field w-full px-4 py-3 rounded-lg text-sm cursor-pointer">
+                                <option value="">Pilih Lokasi</option>
+                                <option value="Menara Karya Lt 7">Menara Karya Lt 7</option>
+                                <option value="Menara Karya Lt 11">Menara Karya Lt 11</option>
+                                <option value="Menara Karya Lt 18">Menara Karya Lt 18</option>
+                                <option value="Menara Karya Lt 22">Menara Karya Lt 22</option>
+                                <option value="Menara Karya Lt 23">Menara Karya Lt 23</option>
+                                <option value="Menara Karya Lt 27">Menara Karya Lt 27</option>
+                                <option value="Kadin Lt 30">Kadin Lt 30</option>
+                                <option value="Treasury Tower Lt 5">Treasury Tower Lt 5</option>
+                            </select>
+                        </div>
+                        <div class="slide-up stagger-4">
+                            <label class="block text-xs font-medium mb-2 uppercase tracking-wider" style="color: var(--muted)">Shift</label>
+                            <select id="shiftInput" class="input-field w-full px-4 py-3 rounded-lg text-sm cursor-pointer">
+                                <option value="">Pilih Shift</option>
+                                <option value="06:00 - 14:00">06:00 - 14:00</option>
+                                <option value="07:00 - 16:00">07:00 - 16:00</option>
+                                <option value="08:00 - 16:00">08:00 - 16:00</option>
+                                <option value="08:00 - 17:00">08:00 - 17:00</option>
+                                <option value="09:00 - 17:00">09:00 - 17:00</option>
+                                <option value="09:00 - 18:00">09:00 - 18:00</option>
+                                <option value="12:00 - 20:00">12:00 - 20:00</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-6 md:p-8">
+                    <div class="flex items-center justify-between mb-4 no-print">
+                        <h2 class="text-lg font-semibold">Daftar Aktivitas</h2>
+                        <button id="addRowBtn" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>Tambah Baris</button>
+                    </div>
+                    <div class="info-box mb-4 no-print">
+                        <div class="flex items-start gap-3">
+                            <div class="info-box-icon"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" style="color: var(--info-text)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+                            <div class="flex-1">
+                                <h3 class="text-sm font-semibold mb-2" style="color: var(--info-text)">Keterangan Periode Waktu</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm" style="color: var(--muted)">
+                                    <div class="flex items-start gap-2"><span class="font-medium px-2 py-0.5 rounded text-xs" style="background: rgba(16, 185, 129, 0.15); color: var(--accent)">AM</span><span>Dimulai dari pukul 12:00 tengah malam (00:00) hingga pukul 11:59 siang.</span></div>
+                                    <div class="flex items-start gap-2"><span class="font-medium px-2 py-0.5 rounded text-xs" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b">PM</span><span>Dimulai dari pukul 12:00 siang (tengah hari) hingga pukul 23:59 malam.</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto rounded-lg border" style="border-color: var(--border)">
+                        <table>
+                            <thead><tr><th class="px-4 py-3 text-center" style="width: 60px">No</th><th class="px-4 py-3" style="width: 160px">Time</th><th class="px-4 py-3">Job Description</th><th class="px-4 py-3 text-center no-print" style="width: 80px">Aksi</th></tr></thead>
+                            <tbody id="tableBody"></tbody>
+                        </table>
+                    </div>
+                    <div id="emptyState" class="py-12 text-center"><div class="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style="background: var(--bg-secondary)"><svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" style="color: var(--muted)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg></div><p style="color: var(--muted)">Belum ada aktivitas. Klik "Tambah Baris" untuk memulai.</p></div>
+                    <div id="totalSection" class="mt-4 pt-4 border-t hidden" style="border-color: var(--border)"><div class="flex items-center justify-between text-sm"><span style="color: var(--muted)">Total Aktivitas:</span><span id="totalCount" class="mono font-medium" style="color: var(--accent)">0</span></div></div>
+                </div>
+
+                <div class="p-6 md:p-8 border-t no-print" style="border-color: var(--border); background: var(--bg-secondary)">
+                    <div class="flex flex-col sm:flex-row gap-3 sm:justify-end">
+                        <button id="resetBtn" class="btn-danger px-6 py-2.5 rounded-lg text-sm font-medium">Reset Form</button>
+                        <button id="printBtn" class="btn-secondary px-6 py-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>Cetak</button>
+                        <button id="saveToHistoryBtn" class="btn-primary px-6 py-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>Simpan ke Dashboard</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Dashboard View -->
+        <main class="max-w-5xl mx-auto view-section" id="dashboardView">
+            <div class="card rounded-2xl overflow-hidden">
+                <div class="p-6 md:p-8 border-b" style="border-color: var(--border)">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div><h2 class="text-xl font-bold">Riwayat Aktivitas</h2><p class="text-sm mt-1" style="color: var(--muted)">Data disimpan di cloud (Firebase)</p></div>
+                        <div class="flex gap-2 no-print">
+                            <button id="exportAllPdfBtn" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>Export Semua ke PDF</button>
+                            <button id="clearAllHistoryBtn" class="btn-danger px-4 py-2 rounded-lg text-sm font-medium">Hapus Semua</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6 md:p-8">
+                    <div id="historyList" class="grid gap-4"></div>
+                    <div id="emptyHistory" class="py-12 text-center"><div class="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style="background: var(--bg-secondary)"><svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" style="color: var(--muted)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg></div><p style="color: var(--muted)">Belum ada riwayat aktivitas.</p></div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="max-w-5xl mx-auto mt-8 text-center text-sm no-print" style="color: var(--muted)"><p>Powered by Firebase</p></footer>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-50" style="background: var(--card); border: 1px solid var(--border)">
+        <div class="flex items-center gap-3">
+            <div id="toastIcon" class="w-5 h-5 rounded-full flex items-center justify-center" style="background: var(--accent)"><svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg></div>
+            <span id="toastMessage" class="text-sm font-medium">Pesan</span>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyA-VbFg0X0dOM9n91DTQUTfrNM3Md4rVLI",
+            authDomain: "daily-activity-bf747.firebaseapp.com",
+            databaseURL: "https://daily-activity-bf747-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "daily-activity-bf747",
+            storageBucket: "daily-activity-bf747.firebasestorage.app",
+            messagingSenderId: "12212038283",
+            appId: "1:12212038283:web:de82cd40153952493cc28e",
+            measurementId: "G-40QRWBX3DE"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const { jsPDF } = window.jspdf;
+
+        // App State
+        let currentUser = null;
+        let rowCounter = 0;
+        let unsubscribeSnapshot = null;
+
+        // DOM Elements
+        const tableBody = document.getElementById('tableBody');
+        const emptyState = document.getElementById('emptyState');
+        const totalSection = document.getElementById('totalSection');
+        const totalCount = document.getElementById('totalCount');
+        const addRowBtn = document.getElementById('addRowBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const printBtn = document.getElementById('printBtn');
+        const saveToHistoryBtn = document.getElementById('saveToHistoryBtn');
+        const themeToggle = document.getElementById('themeToggle');
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toastMessage');
+        const areaInput = document.getElementById('areaInput');
+        const areaBadge = document.getElementById('areaBadge');
+        const areaBadgeText = document.getElementById('areaBadgeText');
+        const tabInput = document.getElementById('tabInput');
+        const tabDashboard = document.getElementById('tabDashboard');
+        const inputView = document.getElementById('inputView');
+        const dashboardView = document.getElementById('dashboardView');
+        const historyList = document.getElementById('historyList');
+        const emptyHistory = document.getElementById('emptyHistory');
+        const exportAllPdfBtn = document.getElementById('exportAllPdfBtn');
+        const clearAllHistoryBtn = document.getElementById('clearAllHistoryBtn');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const passwordModal = document.getElementById('passwordModal');
+        const passwordInput = document.getElementById('passwordInput');
+        const passwordError = document.getElementById('passwordError');
+        const submitPasswordBtn = document.getElementById('submitPasswordBtn');
+        const cancelPasswordBtn = document.getElementById('cancelPasswordBtn');
+
+        const CORRECT_PASSWORD = "123456A";
+
+        // Auth Logic
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                currentUser = user;
+                updateConnectionStatus(true);
+                loadDraft();
+            } else {
+                auth.signInAnonymously().catch((error) => {
+                    console.error("Auth Error:", error);
+                    updateConnectionStatus(false);
+                });
+            }
+        });
+
+        function updateConnectionStatus(connected) {
+            if (connected) {
+                connectionStatus.innerHTML = `<span class="w-2 h-2 rounded-full" style="background: var(--accent)"></span><span>Online</span>`;
+            } else {
+                connectionStatus.innerHTML = `<span class="w-2 h-2 rounded-full bg-red-500"></span><span>Offline</span>`;
+            }
+        }
+
+        // Core Logic Functions
+        function initTheme() { const savedTheme = localStorage.getItem('dailyActivityTheme'); if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme); else if (window.matchMedia('(prefers-color-scheme: light)').matches) document.documentElement.setAttribute('data-theme', 'light'); }
+        themeToggle.addEventListener('click', () => { const currentTheme = document.documentElement.getAttribute('data-theme'); const newTheme = currentTheme === 'light' ? 'dark' : 'light'; document.documentElement.setAttribute('data-theme', newTheme); localStorage.setItem('dailyActivityTheme', newTheme); });
+        function showPasswordModal() { passwordModal.classList.add('active'); passwordInput.value = ''; passwordError.classList.add('hidden'); setTimeout(() => passwordInput.focus(), 300); }
+        function hidePasswordModal() { passwordModal.classList.remove('active'); }
+        function checkPassword() { if (passwordInput.value === CORRECT_PASSWORD) { hidePasswordModal(); activateDashboard(); } else { passwordError.classList.remove('hidden'); passwordInput.classList.add('error-shake'); setTimeout(() => passwordInput.classList.remove('error-shake'), 500); passwordInput.focus(); passwordInput.select(); } }
+        function activateDashboard() { inputView.classList.remove('active'); dashboardView.classList.add('active'); tabInput.classList.remove('active'); tabDashboard.classList.add('active'); renderHistory(); }
+        function switchView(view) { if (view === 'input') { inputView.classList.add('active'); dashboardView.classList.remove('active'); tabInput.classList.add('active'); tabDashboard.classList.remove('active'); } else { showPasswordModal(); } }
+        tabInput.addEventListener('click', () => switchView('input')); tabDashboard.addEventListener('click', () => switchView('dashboard'));
+        submitPasswordBtn.addEventListener('click', checkPassword); cancelPasswordBtn.addEventListener('click', hidePasswordModal);
+        passwordInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkPassword(); else if (e.key === 'Escape') hidePasswordModal(); });
+        passwordModal.addEventListener('click', (e) => { if (e.target === passwordModal) hidePasswordModal(); });
+        areaInput.addEventListener('change', () => { if (areaInput.value) { areaBadgeText.textContent = areaInput.value; areaBadge.classList.remove('hidden'); } else { areaBadge.classList.add('hidden'); } });
+        function showToast(message) { toastMessage.textContent = message; toast.classList.remove('translate-y-20', 'opacity-0'); toast.classList.add('translate-y-0', 'opacity-100'); setTimeout(() => { toast.classList.remove('translate-y-0', 'opacity-100'); toast.classList.add('translate-y-20', 'opacity-0'); }, 3000); }
+        function updateEmptyState() { const rows = tableBody.querySelectorAll('tr'); if (rows.length === 0) { emptyState.classList.remove('hidden'); totalSection.classList.add('hidden'); } else { emptyState.classList.add('hidden'); totalSection.classList.remove('hidden'); totalCount.textContent = rows.length; } }
+        function renumberRows() { const rows = tableBody.querySelectorAll('tr'); rows.forEach((row, index) => { const noCell = row.querySelector('.row-number'); if (noCell) noCell.textContent = index + 1; }); }
+        function addRow(time = '', description = '') { rowCounter++; const row = document.createElement('tr'); row.className = 'row-enter'; row.innerHTML = `<td class="px-4 py-2 text-center row-number" style="color: var(--muted)">${rowCounter}</td><td class="p-0"><input type="time" class="table-input mono text-sm" value="${time}"></td><td class="p-0"><input type="text" class="table-input text-sm" placeholder="Deskripsi pekerjaan..." value="${description}"></td><td class="px-4 py-2 text-center no-print"><button class="delete-btn p-2 rounded-lg transition-colors hover:bg-red-500/10" style="color: var(--danger)" aria-label="Hapus baris"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></td>`; const deleteBtn = row.querySelector('.delete-btn'); deleteBtn.addEventListener('click', () => { row.classList.add('row-delete'); setTimeout(() => { row.remove(); renumberRows(); updateEmptyState(); saveDraft(); }, 300); }); tableBody.appendChild(row); updateEmptyState(); const inputs = row.querySelectorAll('input'); inputs.forEach(input => input.addEventListener('change', saveDraft)); }
+        addRowBtn.addEventListener('click', () => addRow());
+        resetBtn.addEventListener('click', () => { if (confirm('Apakah Anda yakin ingin mereset semua data?')) { areaInput.value = ''; document.getElementById('lokasiInput').value = ''; document.getElementById('shiftInput').value = ''; areaBadge.classList.add('hidden'); tableBody.innerHTML = ''; rowCounter = 0; updateEmptyState(); localStorage.removeItem('dailyActivityDraft'); showToast('Form berhasil direset'); } });
+        printBtn.addEventListener('click', () => window.print());
+        function saveDraft() { const data = { area: areaInput.value, lokasi: document.getElementById('lokasiInput').value, shift: document.getElementById('shiftInput').value, activities: [] }; const rows = tableBody.querySelectorAll('tr'); rows.forEach((row) => { const time = row.querySelector('input[type="time"]').value; const desc = row.querySelector('input[type="text"]').value; data.activities.push({ time, description: desc }); }); localStorage.setItem('dailyActivityDraft', JSON.stringify(data)); }
+        function loadDraft() { const savedData = localStorage.getItem('dailyActivityDraft'); if (savedData) { const data = JSON.parse(savedData); areaInput.value = data.area || ''; document.getElementById('lokasiInput').value = data.lokasi || ''; document.getElementById('shiftInput').value = data.shift || ''; if (data.area) { areaBadgeText.textContent = data.area; areaBadge.classList.remove('hidden'); } if (data.activities && data.activities.length > 0) data.activities.forEach(activity => addRow(activity.time, activity.description)); } }
+
+        // Firestore Logic
+        saveToHistoryBtn.addEventListener('click', async () => {
+            if (!currentUser) { showToast('Menunggu koneksi...'); return; }
+            const area = areaInput.value; const lokasi = document.getElementById('lokasiInput').value; const shift = document.getElementById('shiftInput').value;
+            if (!area || !lokasi || !shift) { showToast('Harap lengkapi Area, Lokasi, dan Shift'); return; }
+            const activities = []; const rows = tableBody.querySelectorAll('tr');
+            if (rows.length === 0) { showToast('Harap tambahkan minimal satu aktivitas'); return; }
+            rows.forEach((row) => { const time = row.querySelector('input[type="time"]').value; const desc = row.querySelector('input[type="text"]').value; if (time || desc) activities.push({ time, description: desc }); });
+
+            const record = {
+                date: new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                area, lokasi, shift, activities
+            };
+
+            try {
+                await db.collection('users').doc(currentUser.uid).collection('activities').add(record);
+                areaInput.value = ''; document.getElementById('lokasiInput').value = ''; document.getElementById('shiftInput').value = ''; areaBadge.classList.add('hidden'); tableBody.innerHTML = ''; rowCounter = 0; updateEmptyState(); localStorage.removeItem('dailyActivityDraft');
+                showToast('Data berhasil disimpan ke Cloud');
+            } catch (error) {
+                console.error("Error saving:", error);
+                showToast('Gagal menyimpan. Cek Rules Firestore.');
+            }
+        });
+
+        function renderHistory() {
+            if (!currentUser) return;
+            if (unsubscribeSnapshot) unsubscribeSnapshot();
+
+            unsubscribeSnapshot = db.collection('users').doc(currentUser.uid).collection('activities')
+                .orderBy('timestamp', 'desc')
+                .onSnapshot((snapshot) => {
+                    if (snapshot.empty) { historyList.innerHTML = ''; emptyHistory.classList.remove('hidden'); return; }
+                    emptyHistory.classList.add('hidden'); historyList.innerHTML = '';
+                    
+                    snapshot.forEach((doc) => {
+                        const record = doc.data();
+                        const recordId = doc.id;
+                        const dateDisplay = record.date || new Date().toLocaleDateString('id-ID');
+                        const card = document.createElement('div');
+                        card.className = 'history-card';
+                        card.innerHTML = `<div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4"><div class="flex-1"><div class="flex items-center gap-2 mb-2"><span class="text-xs font-medium px-2 py-1 rounded" style="background: var(--bg-secondary); color: var(--accent)">${record.area}</span><span class="text-xs font-medium px-2 py-1 rounded" style="background: var(--bg-secondary); color: var(--muted)">${record.shift}</span></div><h3 class="font-semibold">${record.lokasi}</h3><p class="text-xs mt-1" style="color: var(--muted)">${dateDisplay}</p><p class="text-sm mt-2" style="color: var(--muted)">${record.activities.length} aktivitas tercatat</p></div><div class="flex gap-2 no-print"><button onclick="exportSinglePdf('${recordId}')" class="btn-secondary px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>PDF</button><button onclick="deleteRecord('${recordId}')" class="btn-danger px-3 py-1.5 rounded-lg text-xs font-medium">Hapus</button></div></div>`;
+                        historyList.appendChild(card);
+                        window['record_' + recordId] = record;
+                    });
+                }, (error) => {
+                    console.error("Error loading history:", error);
+                });
+        }
+
+        window.deleteRecord = async function(id) {
+            if (confirm('Hapus data ini?')) {
+                try { await db.collection('users').doc(currentUser.uid).collection('activities').doc(id).delete(); showToast('Data berhasil dihapus'); } catch (error) { showToast('Gagal menghapus'); }
+            }
+        };
+
+        window.exportSinglePdf = function(id) { const record = window['record_' + id]; if (record) generatePdf([record]); };
+        exportAllPdfBtn.addEventListener('click', async () => { try { const snapshot = await db.collection('users').doc(currentUser.uid).collection('activities').orderBy('timestamp', 'desc').get(); if (snapshot.empty) { showToast('Tidak ada data'); return; } const records = snapshot.docs.map(doc => doc.data()); generatePdf(records); } catch (error) { showToast('Gagal export'); } });
+        clearAllHistoryBtn.addEventListener('click', async () => { if (confirm('Hapus semua?')) { try { const batch = db.batch(); const snapshot = await db.collection('users').doc(currentUser.uid).collection('activities').get(); snapshot.docs.forEach((doc) => { batch.delete(doc.ref); }); await batch.commit(); showToast('Semua data dihapus'); } catch (error) { showToast('Gagal menghapus'); } } });
+
+        function generatePdf(records) {
+            const doc = new jsPDF();
+            records.forEach((record, recordIndex) => {
+                if (recordIndex > 0) doc.addPage();
+                doc.setFontSize(16); doc.setFont('helvetica', 'bold'); doc.text('Daily Activity', 14, 20);
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'bold'); doc.text('Date', 14, 30); doc.setFont('helvetica', 'normal'); doc.text(`: ${record.date || '-'}`, 50, 30);
+                doc.setFont('helvetica', 'bold'); doc.text('Area', 14, 38); doc.setFont('helvetica', 'normal'); doc.text(`: ${record.area}`, 50, 38);
+                doc.setFont('helvetica', 'bold'); doc.text('Lokasi Kerja', 14, 46); doc.setFont('helvetica', 'normal'); doc.text(`: ${record.lokasi}`, 50, 46);
+                doc.setFont('helvetica', 'bold'); doc.text('Shift', 14, 54); doc.setFont('helvetica', 'normal'); doc.text(`: ${record.shift}`, 50, 54);
+                const tableData = record.activities.map((act, i) => [i + 1, act.time || '-', act.description || '-']);
+                doc.autoTable({ startY: 62, head: [['No', 'TIME', 'JOB DESCRIPTION']], body: tableData, theme: 'grid', headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', fontSize: 10, lineWidth: 0.5, lineColor: [0, 0, 0] }, bodyStyles: { fontSize: 10, lineWidth: 0.5, lineColor: [0, 0, 0] }, columnStyles: { 0: { cellWidth: 15, halign: 'center', cellPadding: 3 }, 1: { cellWidth: 35, halign: 'center', cellPadding: 3 }, 2: { cellWidth: 'auto', cellPadding: 3 } }, margin: { left: 14, right: 14 } });
+            });
+            const fileName = records.length === 1 ? `Daily_Activity_${new Date().toISOString().split('T')[0]}.pdf` : `Daily_Activity_All.pdf`;
+            doc.save(fileName); showToast('PDF berhasil diunduh');
+        }
+
+        initTheme();
+    </script>
+</body>
+</html>

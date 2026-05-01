@@ -208,7 +208,7 @@
             <div class="card rounded-2xl overflow-hidden">
                 <div class="p-6 md:p-8 border-b" style="border-color: var(--border)">
                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <div><h2 class="text-xl font-bold">Riwayat Aktivitas</h2><p class="text-sm mt-1" style="color: var(--muted)">Data disimpan di cloud (Firebase)</p></div>
+                        <div><h2 class="text-xl font-bold">Riwayat Aktivitas</h2><p class="text-sm mt-1" style="color: var(--muted)">Data Global - Dapat diakses siapa saja</p></div>
                         <div class="flex gap-2 no-print">
                             <button id="exportAllPdfBtn" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>Export Semua ke PDF</button>
                             <button id="clearAllHistoryBtn" class="btn-danger px-4 py-2 rounded-lg text-sm font-medium">Hapus Semua</button>
@@ -334,7 +334,11 @@
         function saveDraft() { const data = { area: areaInput.value, lokasi: document.getElementById('lokasiInput').value, shift: document.getElementById('shiftInput').value, activities: [] }; const rows = tableBody.querySelectorAll('tr'); rows.forEach((row) => { const time = row.querySelector('input[type="time"]').value; const desc = row.querySelector('input[type="text"]').value; data.activities.push({ time, description: desc }); }); localStorage.setItem('dailyActivityDraft', JSON.stringify(data)); }
         function loadDraft() { const savedData = localStorage.getItem('dailyActivityDraft'); if (savedData) { const data = JSON.parse(savedData); areaInput.value = data.area || ''; document.getElementById('lokasiInput').value = data.lokasi || ''; document.getElementById('shiftInput').value = data.shift || ''; if (data.area) { areaBadgeText.textContent = data.area; areaBadge.classList.remove('hidden'); } if (data.activities && data.activities.length > 0) data.activities.forEach(activity => addRow(activity.time, activity.description)); } }
 
-        // Firestore Logic
+        // ==========================================
+        // MODIFIED: FIRESTORE GLOBAL LOGIC
+        // ==========================================
+        
+        // Save to Global Collection
         saveToHistoryBtn.addEventListener('click', async () => {
             if (!currentUser) { showToast('Menunggu koneksi...'); return; }
             const area = areaInput.value; const lokasi = document.getElementById('lokasiInput').value; const shift = document.getElementById('shiftInput').value;
@@ -350,20 +354,27 @@
             };
 
             try {
-                await db.collection('users').doc(currentUser.uid).collection('activities').add(record);
+                // CHANGED: Save to global collection 'daily_activities'
+                await db.collection('daily_activities').add(record);
+                
+                // Reset form
                 areaInput.value = ''; document.getElementById('lokasiInput').value = ''; document.getElementById('shiftInput').value = ''; areaBadge.classList.add('hidden'); tableBody.innerHTML = ''; rowCounter = 0; updateEmptyState(); localStorage.removeItem('dailyActivityDraft');
-                showToast('Data berhasil disimpan ke Cloud');
+                
+                // CHANGED: Notification text
+                showToast('data sudah tersimpan');
             } catch (error) {
                 console.error("Error saving:", error);
                 showToast('Gagal menyimpan. Cek Rules Firestore.');
             }
         });
 
+        // Render History from Global Collection
         function renderHistory() {
             if (!currentUser) return;
             if (unsubscribeSnapshot) unsubscribeSnapshot();
 
-            unsubscribeSnapshot = db.collection('users').doc(currentUser.uid).collection('activities')
+            // CHANGED: Read from global collection 'daily_activities'
+            unsubscribeSnapshot = db.collection('daily_activities')
                 .orderBy('timestamp', 'desc')
                 .onSnapshot((snapshot) => {
                     if (snapshot.empty) { historyList.innerHTML = ''; emptyHistory.classList.remove('hidden'); return; }
@@ -386,13 +397,38 @@
 
         window.deleteRecord = async function(id) {
             if (confirm('Hapus data ini?')) {
-                try { await db.collection('users').doc(currentUser.uid).collection('activities').doc(id).delete(); showToast('Data berhasil dihapus'); } catch (error) { showToast('Gagal menghapus'); }
+                try { 
+                    // CHANGED: Delete from global collection
+                    await db.collection('daily_activities').doc(id).delete(); 
+                    showToast('Data berhasil dihapus'); 
+                } catch (error) { showToast('Gagal menghapus'); }
             }
         };
 
         window.exportSinglePdf = function(id) { const record = window['record_' + id]; if (record) generatePdf([record]); };
-        exportAllPdfBtn.addEventListener('click', async () => { try { const snapshot = await db.collection('users').doc(currentUser.uid).collection('activities').orderBy('timestamp', 'desc').get(); if (snapshot.empty) { showToast('Tidak ada data'); return; } const records = snapshot.docs.map(doc => doc.data()); generatePdf(records); } catch (error) { showToast('Gagal export'); } });
-        clearAllHistoryBtn.addEventListener('click', async () => { if (confirm('Hapus semua?')) { try { const batch = db.batch(); const snapshot = await db.collection('users').doc(currentUser.uid).collection('activities').get(); snapshot.docs.forEach((doc) => { batch.delete(doc.ref); }); await batch.commit(); showToast('Semua data dihapus'); } catch (error) { showToast('Gagal menghapus'); } } });
+        
+        exportAllPdfBtn.addEventListener('click', async () => { 
+            try { 
+                // CHANGED: Get all from global collection
+                const snapshot = await db.collection('daily_activities').orderBy('timestamp', 'desc').get(); 
+                if (snapshot.empty) { showToast('Tidak ada data'); return; } 
+                const records = snapshot.docs.map(doc => doc.data()); 
+                generatePdf(records); 
+            } catch (error) { showToast('Gagal export'); } 
+        });
+        
+        clearAllHistoryBtn.addEventListener('click', async () => { 
+            if (confirm('Hapus semua data global? Ini akan menghapus data semua orang.')) { 
+                try { 
+                    const batch = db.batch(); 
+                    // CHANGED: Delete all from global collection
+                    const snapshot = await db.collection('daily_activities').get(); 
+                    snapshot.docs.forEach((doc) => { batch.delete(doc.ref); }); 
+                    await batch.commit(); 
+                    showToast('Semua data dihapus'); 
+                } catch (error) { showToast('Gagal menghapus'); } 
+            } 
+        });
 
         function generatePdf(records) {
             const doc = new jsPDF();
